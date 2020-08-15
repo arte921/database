@@ -1,30 +1,33 @@
-// only indended for manual usage, to introduce or deprecate database enties or when db reorganisation.
+// Syncs up all entries in "servers" database to be like in "config" db's default_config property. 
 
-const fs = require("fs");
 const path = require("path");
-const cwd = process.cwd();
 
-const database = "servers";
+const { save, load } = require(path.join(__dirname, "index.js"));
 
-const dbpath = path.join(__dirname, "storage", database + ".json");
-const backuppath = path.join(__dirname, "storage", database + ".json");
+const dbname = "servers";
 
-// run this manually or only on first run. MAYBE CONTAIN BUG
-// fs.writeFileSync(backuppath, fs.readFileSync(dbpath));
+let database = load(dbname);
+let exampledb = load("config").default_config;
 
+function sync (object, example) {
+    for (key in example) {
+        if (!object[key]) {
+            object[key] = example[key];
+        } else if (typeof(object[key]) == "object" && !Array.isArray(object[key])) {
+            sync (object[key], example[key]);
+        }
+    }
 
-
-let database = JSON.parse(fs.readFileSync(dbpath).toString());
-
-for (id in database) {
-    let commandblocklist = database[id].blocklist;
-    database[id].blocklist = {
-        commands:commandblocklist,
-        utils:[]
+    for (key in object) {
+        if (!example[key]) {
+            delete object[key];
+        }
     }
 }
 
+for (id in database) {
+    sync(database[id], exampledb);
+}
 
-fs.writeFileSync(dbpath, JSON.stringify(database, null, 4));
 
-//TODO make relative to file location paths
+save(dbname, database);
